@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { toJpeg } from 'html-to-image'
 import { Download, MapPin, Phone, Printer, ArrowLeft, Share2 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -46,57 +45,77 @@ export default function InvitationPage() {
       .finally(() => setLoading(false))
   }, [params.id])
 
-  // 导出 JPG 图片 - 使用可靠的方式
-  const exportCard = async () => {
-    if (!cardRef.current) return
+  // 导出图片 - 使用可靠的方式
+  const exportCard = useCallback(async () => {
+    if (!cardRef.current) {
+      alert('卡片未加载完成，请稍后再试')
+      return
+    }
+    
     setExporting(true)
     
     try {
-      // 方法1: 尝试使用 toJpeg
-      const { toJpeg } = await import('html-to-image')
+      // 动态导入 dom-to-image-more
+      const domtoimage = await import('dom-to-image-more')
       
-      // 强制设置背景色，避免透明导致黑屏
       const element = cardRef.current
+      
+      // 确保元素有明确的背景色
       const originalBg = element.style.backgroundColor
       element.style.backgroundColor = '#0a0a0a'
       
-      const dataUrl = await toJpeg(element, { 
-        quality: 0.95, 
+      // 等待字体加载
+      await document.fonts.ready
+      
+      // 生成 JPEG
+      const dataUrl = await domtoimage.toJpeg(element, {
+        quality: 0.95,
         pixelRatio: 2,
-        backgroundColor: '#0a0a0a',
-        cacheBust: true,
-        skipFonts: true,
+        bgcolor: '#0a0a0a',
         style: {
           backgroundColor: '#0a0a0a',
+        },
+        // 过滤掉可能影响渲染的元素
+        filter: (node: HTMLElement) => {
+          if (node.classList && node.classList.contains('no-print')) {
+            return false
+          }
+          return true
         }
       })
       
       // 恢复原背景
       element.style.backgroundColor = originalBg
       
-      // 下载图片
+      // 下载
       const link = document.createElement('a')
-      link.download = `烧师富_${data?.hostName || '邀约'}_${new Date().getTime()}.jpg`
+      link.download = `烧师富_${data?.hostName || '邀约'}_${Date.now()}.jpg`
       link.href = dataUrl
       document.body.appendChild(link)
       link.click()
-      document.body.removeChild(link)
+      
+      // 延迟移除链接
+      setTimeout(() => {
+        document.body.removeChild(link)
+      }, 100)
       
     } catch (error) {
       console.error('导出失败:', error)
-      alert('导出失败，请使用浏览器截图功能或点击打印按钮')
+      alert('导出图片失败，请尝试使用浏览器截图功能（Ctrl+Shift+S 或 Cmd+Shift+4）')
     } finally {
       setExporting(false)
     }
-  }
+  }, [data?.hostName])
 
   // 打印功能
-  const handlePrint = () => {
-    window.print()
-  }
+  const handlePrint = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.print()
+    }
+  }, [])
 
   // 分享功能
-  const handleShare = async () => {
+  const handleShare = useCallback(async () => {
     if (navigator.share) {
       try {
         await navigator.share({
@@ -104,26 +123,30 @@ export default function InvitationPage() {
           text: `您有一张烧师富预约邀请函，日期：${data?.date} ${data?.time}`,
           url: window.location.href,
         })
-      } catch (err) {
-        // 用户取消分享
+      } catch {
+        // 用户取消
       }
     } else {
-      // 复制链接到剪贴板
       navigator.clipboard.writeText(window.location.href)
       alert('链接已复制到剪贴板')
     }
-  }
+  }, [data])
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return {
-      month: date.getMonth() + 1,
-      day: date.getDate(),
+    if (!dateStr) return { month: '--', day: '--' }
+    try {
+      const date = new Date(dateStr)
+      return {
+        month: date.getMonth() + 1,
+        day: date.getDate(),
+      }
+    } catch {
+      return { month: '--', day: '--' }
     }
   }
 
   if (loading) return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">加载中...</div>
-  if (!data) return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">未找到</div>
+  if (!data) return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">未找到邀请信息</div>
 
   const dateInfo = formatDate(data.date)
 
@@ -174,23 +197,26 @@ export default function InvitationPage() {
         </button>
       </div>
 
-      {/* 邀约卡 - 添加白色边框确保可见 */}
+      {/* 邀约卡 */}
       <div 
         ref={cardRef}
-        className="max-w-sm mx-auto bg-[#0a0a0a] border-2 border-white/30 shadow-2xl"
-        style={{ backgroundColor: '#0a0a0a' }} // 强制内联背景色
+        id="invitation-card"
+        className="max-w-sm mx-auto bg-[#0a0a0a]"
+        style={{ 
+          backgroundColor: '#0a0a0a',
+          border: '2px solid rgba(255,255,255,0.3)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+        }}
       >
-        {/* 顶部红线 */}
         <div className="h-2 bg-[#c41e3a]"></div>
         
         <div className="p-8" style={{ backgroundColor: '#0a0a0a' }}>
-          {/* 头部 Logo */}
+          {/* Logo */}
           <div className="text-center mb-8" style={{ backgroundColor: '#0a0a0a' }}>
             <h1 className="text-6xl text-white mb-4 tracking-widest" style={{ fontFamily: 'serif', fontWeight: 700 }}>
               烧师富
             </h1>
             
-            {/* 红圈圈修饰 */}
             <div className="flex items-center justify-center gap-2 mb-4">
               {['板', '前', '创', '作', '烧', '鸟'].map((char, i) => (
                 <div key={i} className="w-8 h-8 border border-[#c41e3a] rounded-full flex items-center justify-center">
@@ -218,7 +244,7 @@ export default function InvitationPage() {
             ))}
           </div>
 
-          {/* 日期时间 */}
+          {/* 日期 */}
           <div className="text-center mb-8 py-6 border-y border-white/20">
             <div className="text-5xl text-white mb-2 tracking-wider" style={{ fontFamily: 'serif', fontWeight: 700 }}>
               {dateInfo.month}月{dateInfo.day}日
@@ -246,7 +272,7 @@ export default function InvitationPage() {
             )}
           </div>
 
-          {/* 今日炭火料理推荐 */}
+          {/* 今日推荐 */}
           <div className="mb-8">
             <h2 className="text-lg text-white mb-4 text-center tracking-[0.15em]" style={{ fontFamily: 'serif' }}>
               今日炭火料理推荐
@@ -269,7 +295,7 @@ export default function InvitationPage() {
             </div>
           </div>
 
-          {/* 地址和交通 */}
+          {/* 地址 */}
           <div className="pt-6 border-t border-white/20 mb-6">
             <div className="flex items-start gap-2 text-xs text-white/50 mb-3" style={{ fontFamily: 'serif' }}>
               <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -313,7 +339,6 @@ export default function InvitationPage() {
           </div>
         </div>
 
-        {/* 底部红线 */}
         <div className="h-2 bg-[#c41e3a]"></div>
       </div>
 
