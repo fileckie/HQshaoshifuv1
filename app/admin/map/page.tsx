@@ -171,10 +171,15 @@ export default function TableMapPage() {
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/admin" className="text-white/50 hover:text-white">
-                <ChevronLeft className="w-6 h-6" />
+              <Link href="/" className="flex items-center gap-2 text-white/50 hover:text-white transition-colors">
+                <ChevronLeft className="w-5 h-5" />
+                <span style={{ fontFamily: 'serif' }}>首页</span>
               </Link>
-              <h1 className="text-2xl text-white tracking-wider" style={{ fontFamily: 'serif' }}>
+              <div className="w-px h-6 bg-white/20"></div>
+              <Link href="/admin" className="flex items-center gap-2 text-white/50 hover:text-white transition-colors">
+                <span style={{ fontFamily: 'serif' }}>预约管理</span>
+              </Link>
+              <h1 className="text-2xl text-white tracking-wider ml-2" style={{ fontFamily: 'serif' }}>
                 座位平面图
               </h1>
             </div>

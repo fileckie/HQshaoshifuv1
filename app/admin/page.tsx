@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm, useFieldArray } from 'react-hook-form'
-import { Plus, Trash2, Loader2, MapPin, LayoutGrid } from 'lucide-react'
+import { Plus, Trash2, Loader2, MapPin, LayoutGrid, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 interface FormData {
@@ -139,6 +139,14 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] py-10 px-4">
       <div className="max-w-2xl mx-auto">
+        {/* 返回首页按钮 */}
+        <div className="mb-6">
+          <Link href="/" className="flex items-center gap-2 text-white/60 hover:text-white transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+            <span style={{ fontFamily: 'serif' }}>返回首页</span>
+          </Link>
+        </div>
+
         {/* 头部 */}
         <div className="text-center mb-8">
           <h1 className="text-4xl text-white mb-2 tracking-wider" style={{ fontFamily: 'serif' }}>

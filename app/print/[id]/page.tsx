@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
-import { toPng } from 'html-to-image'
-import { Download, MapPin, Phone, AlertCircle, User, CreditCard, ClipboardList } from 'lucide-react'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { toJpeg } from 'html-to-image'
+import { Download, MapPin, Phone, AlertCircle, User, CreditCard, ClipboardList, Printer, ArrowLeft, ArrowRight } from 'lucide-react'
 
 interface BanquetData {
   id: string
@@ -21,7 +21,6 @@ interface BanquetData {
     address: string
     phone: string
   }
-  // 新增员工版字段
   vipLevel?: string
   bookingChannel?: string
   paymentStatus?: string
@@ -40,6 +39,7 @@ const BRAND_KEYWORDS = [
 export default function PrintPage() {
   const params = useParams()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const type = searchParams.get('type') || 'table'
   const [data, setData] = useState<BanquetData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,17 +52,36 @@ export default function PrintPage() {
       .finally(() => setLoading(false))
   }, [params.id])
 
+  // 导出 JPG
   const exportCard = async () => {
     if (!cardRef.current) return
     try {
-      const dataUrl = await toPng(cardRef.current, { quality: 0.95, pixelRatio: 2 })
+      const dataUrl = await toJpeg(cardRef.current, { 
+        quality: 0.95, 
+        pixelRatio: 2,
+        backgroundColor: '#0a0a0a',
+        cacheBust: true,
+        skipFonts: true,
+      })
       const link = document.createElement('a')
-      link.download = `烧师富_${data?.hostName}_${type === 'table' ? '桌上' : '员工'}.png`
+      link.download = `烧师富_${data?.hostName}_${type === 'table' ? '桌上' : '员工'}.jpg`
       link.href = dataUrl
       link.click()
     } catch (error) {
-      alert('导出失败')
+      console.error('导出失败:', error)
+      alert('导出失败，请重试')
     }
+  }
+
+  // 打印
+  const handlePrint = () => {
+    window.print()
+  }
+
+  // 切换版本
+  const switchType = () => {
+    const newType = type === 'table' ? 'staff' : 'table'
+    router.push(`/print/${params.id}?type=${newType}`)
   }
 
   const formatDate = (dateStr: string) => {
@@ -78,61 +97,74 @@ export default function PrintPage() {
 
   const dateInfo = formatDate(data.date)
 
-  // 桌上版 - 大字，完整品牌故事
+  // 桌上版
   if (type === 'table') {
     return (
       <div className="min-h-screen bg-[#0a0a0a] py-8 px-4">
-        {/* 导出按钮 */}
-        <div className="mb-8 flex justify-center no-print">
+        {/* 顶部导航 */}
+        <div className="max-w-lg mx-auto mb-6 flex items-center justify-between no-print">
+          <button 
+            onClick={() => router.push(`/invitation/${params.id}`)}
+            className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span style={{ fontFamily: 'serif' }}>返回邀约卡</span>
+          </button>
+          <h1 className="text-white/80 text-lg" style={{ fontFamily: 'serif' }}>桌上展示版</h1>
+        </div>
+
+        {/* 操作按钮 */}
+        <div className="max-w-lg mx-auto mb-8 flex flex-wrap gap-2 no-print">
           <button
             onClick={exportCard}
-            className="flex items-center gap-2 px-6 py-3 bg-white text-black hover:bg-white/90"
-            style={{ fontFamily: 'serif' }}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white text-black hover:bg-white/90"
           >
             <Download className="w-5 h-5" />
-            导出PNG
+            导出JPG
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-white/40 text-white hover:bg-white/10"
+          >
+            <Printer className="w-5 h-5" />
+            打印
+          </button>
+          <button
+            onClick={switchType}
+            className="flex items-center justify-center gap-2 px-4 py-3 border border-white/20 text-white/60 hover:text-white hover:border-white/40"
+          >
+            <span style={{ fontFamily: 'serif' }}>员工版</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
 
-        {/* 桌上展示版 */}
+        {/* 桌上展示版卡片 */}
         <div 
           ref={cardRef}
-          className="w-[420px] mx-auto bg-[#0a0a0a] border border-white/20"
+          className="w-[420px] mx-auto bg-[#0a0a0a] border-2 border-white/30"
+          style={{ backgroundColor: '#0a0a0a' }}
         >
-          {/* 顶部细红线 */}
-          <div className="h-1 bg-[#c41e3a]"></div>
+          <div className="h-2 bg-[#c41e3a]"></div>
           
-          <div className="p-10">
-            {/* Logo 头部 */}
+          <div className="p-10" style={{ backgroundColor: '#0a0a0a' }}>
             <div className="text-center mb-8">
               <h1 className="text-6xl text-white mb-6 tracking-widest" style={{ fontFamily: 'serif', fontWeight: 700 }}>
                 烧师富
               </h1>
               
-              {/* 红圈圈修饰 板前创作烧鸟 */}
               <div className="flex items-center justify-center gap-2 mb-4">
-                <div className="w-8 h-8 border border-[#c41e3a] rounded-full flex items-center justify-center">
-                  <span className="text-[#c41e3a] text-xs" style={{ fontFamily: 'serif' }}>板</span>
-                </div>
-                <div className="w-8 h-8 border border-[#c41e3a] rounded-full flex items-center justify-center">
-                  <span className="text-[#c41e3a] text-xs" style={{ fontFamily: 'serif' }}>前</span>
-                </div>
-                <div className="w-8 h-8 border border-[#c41e3a] rounded-full flex items-center justify-center">
-                  <span className="text-[#c41e3a] text-xs" style={{ fontFamily: 'serif' }}>创</span>
-                </div>
-                <div className="w-8 h-8 border border-[#c41e3a] rounded-full flex items-center justify-center">
-                  <span className="text-[#c41e3a] text-xs" style={{ fontFamily: 'serif' }}>作</span>
-                </div>
-                <div className="w-8 h-8 border border-[#c41e3a] rounded-full flex items-center justify-center">
-                  <span className="text-[#c41e3a] text-xs" style={{ fontFamily: 'serif' }}>烧</span>
-                </div>
-                <div className="w-8 h-8 border border-[#c41e3a] rounded-full flex items-center justify-center">
-                  <span className="text-[#c41e3a] text-xs" style={{ fontFamily: 'serif' }}>鸟</span>
-                </div>
+                {['板', '前', '创', '作', '烧', '鸟'].map((char, i) => (
+                  <div key={i} className="w-8 h-8 border border-[#c41e3a] rounded-full flex items-center justify-center">
+                    <span className="text-[#c41e3a] text-xs" style={{ fontFamily: 'serif' }}>{char}</span>
+                  </div>
+                ))}
               </div>
+              
+              <p className="text-xl text-white/60 tracking-[0.2em]" style={{ fontFamily: 'serif' }}>
+                烧鸟料理的创作道场
+              </p>
             </div>
 
-            {/* 品牌关键词 */}
             <div className="flex justify-center gap-6 mb-8 py-4 border-y border-white/10">
               {BRAND_KEYWORDS.map((keyword, i) => (
                 <div key={i} className="text-center">
@@ -146,7 +178,6 @@ export default function PrintPage() {
               ))}
             </div>
 
-            {/* 日期时间 */}
             <div className="text-center mb-8 py-6 border-y border-white/20">
               <div className="text-5xl text-white mb-3 tracking-wider" style={{ fontFamily: 'serif', fontWeight: 700 }}>
                 {dateInfo.month}月{dateInfo.day}日
@@ -156,7 +187,6 @@ export default function PrintPage() {
               </div>
             </div>
 
-            {/* 客人信息 */}
             <div className="space-y-4 mb-8 text-lg" style={{ fontFamily: 'serif' }}>
               <div className="flex justify-between text-white">
                 <span className="text-white/50">人数</span>
@@ -174,35 +204,31 @@ export default function PrintPage() {
               )}
             </div>
 
-            {/* 今日炭火料理推荐 */}
             <div className="mb-8">
               <h2 className="text-lg text-white mb-5 text-center tracking-[0.15em]" style={{ fontFamily: 'serif' }}>
                 今日炭火料理推荐
               </h2>
               <div className="space-y-4" style={{ fontFamily: 'serif' }}>
-                {/* 主厨限定串 */}
                 <div className="flex items-center gap-3">
                   <span className="text-white/70 text-sm w-24">主厨限定串</span>
                   <span className="text-white/40 text-sm flex-1 border-b border-white/10 pb-1">
                     {(data.menu && data.menu[0]?.name) || ''}
                   </span>
-                  <span className="text-white/20 text-sm w-16 text-right">_____</span>
+                  <span className="text-white/20 text-sm w-16 text-right">____</span>
                 </div>
-                {/* 当季时令烧鸟 */}
                 <div className="flex items-center gap-3">
                   <span className="text-white/70 text-sm w-24">当季时令烧鸟</span>
                   <span className="text-white/40 text-sm flex-1 border-b border-white/10 pb-1">
                     {(data.menu && data.menu[1]?.name) || ''}
                   </span>
-                  <span className="text-white/20 text-sm w-16 text-right">_____</span>
+                  <span className="text-white/20 text-sm w-16 text-right">____</span>
                 </div>
               </div>
             </div>
 
-            {/* 地址和电话 */}
             <div className="pt-6 border-t border-white/20 mb-8">
               <div className="flex items-start gap-2 text-sm text-white/50 mb-3" style={{ fontFamily: 'serif' }}>
-                <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-white/50" />
+                <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="mb-2">双塔街道竹辉路168号环宇荟·L133</p>
                   <p className="text-white/40 text-xs leading-relaxed">
@@ -217,24 +243,20 @@ export default function PrintPage() {
               </div>
             </div>
 
-            {/* 品牌故事 */}
             <div className="pt-6 border-t border-white/10">
               <h2 className="text-lg text-white mb-5 text-center tracking-[0.2em]" style={{ fontFamily: 'serif' }}>
                 关于烧师富
               </h2>
-              <div className="text-sm text-white/50 leading-loose space-y-3 text-center" style={{ fontFamily: 'serif' }}>
+              <div className="text-sm text-white/50 leading-loose space-y-2 text-center" style={{ fontFamily: 'serif' }}>
                 <p>在很多城市里，烧鸟是一种很有烟火气的料理。</p>
                 <p>下班以后，坐在吧台前，点几串烧鸟，喝一点酒，聊一会天。</p>
                 <p>这种简单的快乐，一直存在。</p>
                 <p>但大多数烧鸟店的菜单，十几年几乎没有变化。</p>
                 <p>烧师富想做的事情，是让烧鸟重新变成一种可以创作的料理。</p>
                 <p>所以我们把自己定义为「板前创作」。</p>
-                <p>在烧师富，烧鸟不是流水线的产品。</p>
-                <p>厨师站在炭火前，根据食材的状态进行组合。</p>
               </div>
             </div>
 
-            {/* 氛围文案 */}
             <div className="mt-8 pt-6 border-t border-white/10 text-center">
               <p className="text-white/60 text-base leading-relaxed" style={{ fontFamily: 'serif' }}>
                 不只是一家烧鸟店
@@ -245,8 +267,7 @@ export default function PrintPage() {
             </div>
           </div>
 
-          {/* 底部细红线 */}
-          <div className="h-1 bg-[#c41e3a]"></div>
+          <div className="h-2 bg-[#c41e3a]"></div>
         </div>
 
         <p className="text-center text-sm text-white/30 mt-8 no-print" style={{ fontFamily: 'serif' }}>
@@ -256,27 +277,52 @@ export default function PrintPage() {
     )
   }
 
-  // 员工版 - 内部工作备忘（省略，保持原样）
+  // 员工版
   return (
     <div className="min-h-screen bg-[#0a0a0a] py-8 px-4">
-      {/* 导出按钮 */}
-      <div className="mb-8 flex justify-center no-print">
+      {/* 顶部导航 */}
+      <div className="max-w-lg mx-auto mb-6 flex items-center justify-between no-print">
+        <button 
+          onClick={() => router.push(`/invitation/${params.id}`)}
+          className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span style={{ fontFamily: 'serif' }}>返回邀约卡</span>
+        </button>
+        <h1 className="text-white/80 text-lg" style={{ fontFamily: 'serif' }}>员工备忘版</h1>
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="max-w-lg mx-auto mb-8 flex flex-wrap gap-2 no-print">
         <button
           onClick={exportCard}
-          className="flex items-center gap-2 px-6 py-3 bg-white text-black hover:bg-white/90"
-          style={{ fontFamily: 'serif' }}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white text-black hover:bg-white/90"
         >
           <Download className="w-5 h-5" />
-          导出PNG
+          导出JPG
+        </button>
+        <button
+          onClick={handlePrint}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-white/40 text-white hover:bg-white/10"
+        >
+          <Printer className="w-5 h-5" />
+          打印
+        </button>
+        <button
+          onClick={switchType}
+          className="flex items-center justify-center gap-2 px-4 py-3 border border-white/20 text-white/60 hover:text-white hover:border-white/40"
+        >
+          <ArrowRight className="w-4 h-4" />
+          <span style={{ fontFamily: 'serif' }}>桌上版</span>
         </button>
       </div>
 
-      {/* 员工内部版 */}
+      {/* 员工版卡片 */}
       <div 
         ref={cardRef}
-        className="w-[400px] mx-auto bg-[#0a0a0a] border border-white/20"
+        className="w-[400px] mx-auto bg-[#0a0a0a] border-2 border-white/30"
+        style={{ backgroundColor: '#0a0a0a' }}
       >
-        {/* 顶部标识 */}
         <div className="bg-[#c41e3a] px-6 py-3 flex justify-between items-center">
           <span className="text-white text-sm tracking-widest" style={{ fontFamily: 'serif' }}>
             内部 · 员工备忘
@@ -286,8 +332,7 @@ export default function PrintPage() {
           </span>
         </div>
 
-        <div className="p-8">
-          {/* Logo */}
+        <div className="p-8" style={{ backgroundColor: '#0a0a0a' }}>
           <div className="text-center mb-6">
             <h1 className="text-4xl text-white mb-2" style={{ fontFamily: 'serif', fontWeight: 700 }}>
               烧师富
@@ -297,7 +342,6 @@ export default function PrintPage() {
             </p>
           </div>
 
-          {/* 核心预订信息 */}
           <div className="space-y-3 mb-6 pb-6 border-b border-white/20" style={{ fontFamily: 'serif' }}>
             <div className="flex justify-between text-white text-base">
               <span className="text-white/50">日期</span>
@@ -313,7 +357,6 @@ export default function PrintPage() {
             </div>
           </div>
 
-          {/* 客人信息 */}
           <div className="space-y-3 mb-6 pb-6 border-b border-white/20" style={{ fontFamily: 'serif' }}>
             <div className="flex items-center gap-2 mb-3">
               <User className="w-4 h-4 text-[#c41e3a]" />
@@ -335,7 +378,6 @@ export default function PrintPage() {
             </div>
           </div>
 
-          {/* 预订渠道与付款 */}
           <div className="space-y-3 mb-6 pb-6 border-b border-white/20" style={{ fontFamily: 'serif' }}>
             <div className="flex items-center gap-2 mb-3">
               <CreditCard className="w-4 h-4 text-[#c41e3a]" />
@@ -351,7 +393,6 @@ export default function PrintPage() {
             </div>
           </div>
 
-          {/* 饮食禁忌 */}
           <div className="mb-6 pb-6 border-b border-white/20" style={{ fontFamily: 'serif' }}>
             <div className="flex items-center gap-2 mb-3">
               <AlertCircle className="w-4 h-4 text-[#c41e3a]" />
@@ -362,7 +403,6 @@ export default function PrintPage() {
             </div>
           </div>
 
-          {/* 备餐提醒 */}
           <div className="mb-6 pb-6 border-b border-white/20" style={{ fontFamily: 'serif' }}>
             <div className="flex items-center gap-2 mb-3">
               <ClipboardList className="w-4 h-4 text-[#c41e3a]" />
@@ -373,7 +413,6 @@ export default function PrintPage() {
             </div>
           </div>
 
-          {/* 交接备注 */}
           <div className="mb-6" style={{ fontFamily: 'serif' }}>
             <div className="text-[#c41e3a] text-sm mb-3">服务员交接备注</div>
             <div className="bg-white/5 p-3 min-h-[80px] text-white/70 text-sm">
@@ -381,7 +420,6 @@ export default function PrintPage() {
             </div>
           </div>
 
-          {/* 现场沟通 - 手写留白 */}
           <div className="mb-6" style={{ fontFamily: 'serif' }}>
             <div className="text-white/60 text-sm mb-3">现场提前沟通事项（手写）</div>
             <div className="border border-white/20 p-4 min-h-[100px] bg-[#0a0a0a]">
@@ -392,7 +430,6 @@ export default function PrintPage() {
             </div>
           </div>
 
-          {/* 停车指引 */}
           <div className="pt-4 border-t border-white/10" style={{ fontFamily: 'serif' }}>
             <div className="text-white/50 text-xs mb-2">停车指引</div>
             <p className="text-white/30 text-xs leading-relaxed">
@@ -401,7 +438,6 @@ export default function PrintPage() {
             </p>
           </div>
 
-          {/* 门店电话 */}
           <div className="mt-4 pt-4 border-t border-white/10" style={{ fontFamily: 'serif' }}>
             <div className="flex items-center gap-2 text-white/50">
               <Phone className="w-3 h-3" />
@@ -410,7 +446,6 @@ export default function PrintPage() {
           </div>
         </div>
 
-        {/* 底部 */}
         <div className="bg-[#c41e3a]/10 px-6 py-3 text-center">
           <span className="text-white/40 text-xs" style={{ fontFamily: 'serif' }}>
             此备忘仅限内部使用 · 请勿向客人展示
