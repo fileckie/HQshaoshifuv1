@@ -1,232 +1,168 @@
-# Vercel 自动部署指南
+# 烧师富预约系统 - 一键部署指南
 
-## 📋 部署流程概览
+支持一键部署到 Vercel，自动配置 PostgreSQL 数据库。
 
-```
-你推送代码 → GitHub Actions 自动构建 → 自动部署到 Vercel
-     ↑___________________________________________↓
-                  完全自动化！
-```
+## 方案一：一键部署（推荐）
 
----
+### 1. 准备工作
 
-## 第一步：安装 Vercel CLI
+需要准备：
+- GitHub 账号
+- Vercel 账号（可用 GitHub 登录）
+
+### 2. 创建 PostgreSQL 数据库
+
+**方法一：使用 Vercel Postgres（最简单）**
+
+1. 登录 [Vercel Dashboard](https://vercel.com/dashboard)
+2. 点击顶部 "Storage" 标签
+3. 点击 "Create Database" → 选择 "Postgres"
+4. 选择 Region（推荐：Singapore 或 Tokyo，离中国近）
+5. 创建成功后，点击 "Connect" → 选择你的项目
+
+**方法二：使用 Neon（免费额度更大）**
+
+1. 访问 [Neon](https://neon.tech) 注册账号
+2. 创建新项目
+3. 复制连接字符串（Connection String）
+
+### 3. 部署项目
+
+#### 方式 A：Vercel 按钮一键部署
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/fileckie/HQshaoshifuv1)
+
+点击后按步骤操作即可。
+
+#### 方式 B：命令行部署
 
 ```bash
-# 全局安装 Vercel CLI
-npm install -g vercel
+# 安装 Vercel CLI
+npm i -g vercel
 
-# 验证安装
-vercel --version
-```
-
----
-
-## 第二步：登录 Vercel 并创建项目
-
-```bash
-# 登录（会打开浏览器验证）
+# 登录
 vercel login
 
 # 进入项目目录
-cd /Users/leckie/kimi-projects/banquet-invitation/my-app
+cd shaoshifu-invitation
 
-# 创建 Vercel 项目
-vercel
+# 部署
+vercel --prod
 ```
 
-执行 `vercel` 后会询问：
-- **Set up "~/kimi-projects/banquet-invitation/my-app"?** → 输入 `Y`
-- **Which scope do you want to deploy to?** → 选择你的用户名
-- **Link to existing project?** → 输入 `N`（创建新项目）
-- **What's your project name?** → 输入 `hqinvitation`（或你喜欢的名字）
-- **In which directory is your code located?** → 直接回车（当前目录）
+### 4. 配置环境变量
 
----
+部署后需要设置以下环境变量：
 
-## 第三步：获取 Vercel Token
-
-### 方法：通过 Vercel 网站创建
-
-1. 访问 https://vercel.com/account/tokens
-2. 点击 **"Create Token"**
-3. 名称填写：`GitHub Actions`
-4. 点击 **"Create"**
-5. **立即复制 Token**（只显示一次！）
-
-```
-示例 Token：F3qXv9yZ...（很长一串）
-```
-
----
-
-## 第四步：配置 GitHub Secrets
-
-1. 打开 GitHub 仓库设置页面：
-   ```
-   https://github.com/fileckie/HQinvitation/settings/secrets/actions
-   ```
-
-2. 点击 **"New repository secret"**
-
-3. 添加以下 Secrets：
-
-| Secret 名称 | 值 | 说明 |
-|-------------|-----|------|
-| `VERCEL_TOKEN` | 上面复制的 Token | Vercel 访问令牌 |
-
----
-
-## 第五步：本地连接 Vercel 项目（获取项目 ID）
-
-```bash
-# 在项目目录执行
-vercel link
-```
-
-完成后会生成 `.vercel/project.json` 文件：
-
-```json
-{
-  "orgId": "team_xxxxxxxxxxxxxxxx",
-  "projectId": "prj_xxxxxxxxxxxxxxxx"
-}
-```
-
-**注意**：这些 ID 已经保存在本地，GitHub Actions 通过 `vercel pull` 会自动获取。
-
----
-
-## 第六步：配置 Vercel 环境变量
-
-### 方法：在 Vercel Dashboard 设置
-
-1. 访问 https://vercel.com/dashboard
-2. 点击你的项目 `hqinvitation`
-3. 点击 **"Settings"** → **"Environment Variables"**
-4. 添加以下变量：
-
-| 变量名 | 值 | 环境 |
+| 变量名 | 值 | 说明 |
 |--------|-----|------|
-| `DATABASE_URL` | `file:./dev.db` | Production |
+| `DATABASE_URL` | `postgresql://...` | 数据库连接字符串 |
+| `NEXT_PUBLIC_APP_URL` | `https://你的域名.vercel.app` | 应用URL |
 
-> 💡 **生产环境建议**：使用 Vercel Postgres 或 Neon 等服务器less数据库
+**设置方法：**
+1. 进入 Vercel Dashboard → 你的项目 → Settings → Environment Variables
+2. 添加上述变量
+3. 点击 "Save" 后重新部署
 
 ---
 
-## 第七步：推送配置到 GitHub
+## 方案二：手动分步部署
+
+### 步骤 1：Fork 仓库
+
+1. 访问 https://github.com/fileckie/HQshaoshifuv1
+2. 点击右上角 "Fork" 按钮
+3. 等待 Fork 完成
+
+### 步骤 2：创建数据库
+
+**使用 Neon（推荐免费方案）：**
 
 ```bash
-# 添加更新的配置文件
-git add .
-
-# 提交
-git commit -m "配置 Vercel 自动部署"
-
-# 推送（会自动触发部署！）
-./push.sh "配置 Vercel 自动部署"
+# 1. 注册 https://neon.tech
+# 2. 创建项目 → 复制 DATABASE_URL
 ```
+
+### 步骤 3：Vercel 导入项目
+
+1. 登录 [Vercel](https://vercel.com)
+2. 点击 "Add New Project"
+3. 选择你 Fork 的仓库
+4. 配置：
+   - Framework: Next.js
+   - Build Command: `prisma generate && prisma db push && next build`
+   - Root Directory: `./`
+
+### 步骤 4：设置环境变量
+
+在 Vercel 项目设置中添加：
+
+```
+DATABASE_URL=postgresql://用户名:密码@主机/数据库名?sslmode=require
+NEXT_PUBLIC_APP_URL=https://你的项目域名.vercel.app
+```
+
+### 步骤 5：部署
+
+点击 "Deploy"，等待部署完成即可。
 
 ---
 
-## 🎉 完成！自动部署已配置
+## 数据库初始化
 
-现在每次你推送代码到 `main` 分支：
+首次部署后，系统会自动：
+1. 创建数据库表结构
+2. 初始化餐厅数据（烧师富）
+3. 初始化座位数据（板前10席 + 卡座4桌 + 包厢2间）
 
+---
+
+## 本地开发 vs 生产环境
+
+### 本地开发
+
+使用 SQLite：
 ```bash
-./push.sh "更新某某功能"
+# .env.local
+DATABASE_URL="file:./dev.db"
 ```
 
-GitHub Actions 会自动：
-1. ✅ 检出最新代码
-2. ✅ 安装依赖
-3. ✅ 构建项目
-4. ✅ 部署到 Vercel
+### 生产环境
 
-部署完成后会显示：
-```
-🔍  Inspect: https://vercel.com/xxx/hqinvitation/xxxx
-✅  Production: https://hqinvitation-xxx.vercel.app
-```
-
----
-
-## 🔍 查看部署状态
-
-### 方法 1：GitHub 仓库页面
-- 打开仓库 → 点击 **"Actions"** 标签
-- 查看部署日志
-
-### 方法 2：Vercel Dashboard
-- 访问 https://vercel.com/dashboard
-- 查看实时构建日志和部署状态
-
----
-
-## 🛠️ 故障排查
-
-### 问题 1：部署失败 "VERCEL_TOKEN" 错误
-```
-Error: No token found
-```
-**解决**：检查 GitHub Secrets 中 `VERCEL_TOKEN` 是否正确设置
-
-### 问题 2：构建失败
-```
-Error: Command "build" exited with 1
-```
-**解决**：
+使用 PostgreSQL：
 ```bash
-# 本地先测试构建
-npm run build
-```
-
-### 问题 3：数据库错误
-```
-Error: Database connection failed
-```
-**解决**：在 Vercel Dashboard → Settings → Environment Variables 中添加 `DATABASE_URL`
-
----
-
-## 💡 生产环境建议
-
-### 数据库选择
-
-| 方案 | 优点 | 缺点 |
-|------|------|------|
-| **SQLite (当前)** | 简单、免费 | 不能多实例读写 |
-| **Vercel Postgres** | 官方集成、serverless | 有免费额度限制 |
-| **Neon** | Serverless、免费额度大 | 需要额外配置 |
-
-### 切换到 Vercel Postgres
-
-```bash
-# 1. 在 Vercel Dashboard 创建 Postgres 数据库
-# 2. 连接后会自动设置环境变量
-# 3. 更新 schema.prisma
-```
-
-```prisma
-// prisma/schema.prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("POSTGRES_URL")
-}
+# Vercel Environment Variables
+DATABASE_URL="postgresql://..."
 ```
 
 ---
 
-## 📚 相关链接
+## 常见问题
 
-- Vercel Dashboard: https://vercel.com/dashboard
-- GitHub Actions: https://github.com/fileckie/HQinvitation/actions
-- 部署文档: https://vercel.com/docs/concepts/git/vercel-for-github
+### Q1: 部署后页面显示错误？
+
+检查环境变量 `DATABASE_URL` 是否设置正确。
+
+### Q2: 数据库连接失败？
+
+确保数据库连接字符串包含 `?sslmode=require`。
+
+### Q3: 如何重新初始化数据库？
+
+在 Vercel 中重新部署即可，`prisma db push` 会自动更新表结构。
+
+### Q4: 免费额度够用吗？
+
+- Vercel Hobby: 每月 100GB 带宽，足够使用
+- Neon Free: 每月 500MB 存储 + 100 小时计算时间，足够使用
 
 ---
 
-**需要我帮你执行哪一步？** 例如：
-- 安装 Vercel CLI
-- 获取 Token
-- 配置 Secrets
-- 测试部署
+## 部署后访问
+
+部署完成后，你将获得：
+- 首页：`https://你的域名.vercel.app`
+- 预约管理：`https://你的域名.vercel.app/admin`
+- 座位平面图：`https://你的域名.vercel.app/admin/map`
+
+直接分享给同事即可使用！

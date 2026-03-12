@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id          String   @id @default(uuid())
+  name        String
+  address     String
+  phone       String
+  description String?
+  chefName    String?
+  chefIntro   String?
+  logo        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  banquets    Banquet[]
+  tables      Table[]
+}
+
+// 座位/桌位管理
+model Table {
+  id           String    @id @default(uuid())
+  name         String    // 显示名称：板前1号、卡座A、大包厢
+  type         String    // counter(板前) | booth(卡座) | private_small(小包厢) | private_large(大包厢)
+  x            Float     // 平面图X坐标 (0-100)
+  y            Float     // 平面图Y坐标 (0-100)
+  width        Float     // 宽度 (0-100)
+  height       Float     // 高度 (0-100)
+  capacity     Int       // 容纳人数
+  sortOrder    Int       @default(0) // 排序
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  banquets     Banquet[]  // 关联的预订
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([type])
+  @@index([restaurantId])
+}
+
+model Banquet {
+  id            String   @id @default(uuid())
+  title         String
+  date          String
+  time          String
+  guestCount    Int
+  roomName      String   // 显示用名称
+  tableId       String?  // 关联的具体座位
+  table         Table?   @relation(fields: [tableId], references: [id])
+  hostName      String
+  hostPhone     String
+  menu          String
+  specialDishes String?
+  restaurantId  String
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+  notes         String?  // 客人可见备注
+  status        String   @default("active") // active | cancelled | completed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  rsvps         RSVP[]
+  
+  // 内部管理字段
+  bookingChannel      String?  // wechat | phone | dianping | other
+  paymentStatus       String?  // prepaid | pay_on_arrival
+  dietaryRestrictions String?  // 饮食禁忌
+  prepReminder        String?  // 备餐提醒
+  handoverNotes       String?  // 交接备注
+
+  @@index([date])
+  @@index([status])
+  @@index([tableId])
+}
+
+model RSVP {
+  id                  String   @id @default(uuid())
+  banquetId           String
+  banquet             Banquet  @relation(fields: [banquetId], references: [id], onDelete: Cascade)
+  guestName           String
+  guestPhone          String?
+  status              String   @default("pending") // pending | confirmed | declined
+  attendeeCount       Int      @default(1)
+  dietaryRestrictions String?
+  message             String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([banquetId])
+}

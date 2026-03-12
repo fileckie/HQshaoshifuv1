@@ -9,14 +9,16 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:setup": "node scripts/setup-db.js",
+    "vercel-build": "prisma generate && prisma db push && next build",
+    "deploy": "vercel --prod"
   },
   "dependencies": {
     "@prisma/client": "^5.6.0",
     "html-to-image": "^1.11.11",
     "lucide-react": "^0.294.0",
     "next": "^14.0.0",
-    "playwright": "^1.58.2",
     "qrcode.react": "^3.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -30,6 +32,7 @@
     "postcss": "^8.4.31",
     "prisma": "^5.6.0",
     "tailwindcss": "^3.3.5",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "vercel": "^32.5.0"
   }
 }
