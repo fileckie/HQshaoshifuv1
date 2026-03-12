@@ -46,25 +46,45 @@ export default function InvitationPage() {
       .finally(() => setLoading(false))
   }, [params.id])
 
-  // 导出 JPG 图片
+  // 导出 JPG 图片 - 使用可靠的方式
   const exportCard = async () => {
     if (!cardRef.current) return
     setExporting(true)
+    
     try {
-      const dataUrl = await toJpeg(cardRef.current, { 
+      // 方法1: 尝试使用 toJpeg
+      const { toJpeg } = await import('html-to-image')
+      
+      // 强制设置背景色，避免透明导致黑屏
+      const element = cardRef.current
+      const originalBg = element.style.backgroundColor
+      element.style.backgroundColor = '#0a0a0a'
+      
+      const dataUrl = await toJpeg(element, { 
         quality: 0.95, 
         pixelRatio: 2,
-        backgroundColor: '#0a0a0a', // 强制黑色背景，避免透明
+        backgroundColor: '#0a0a0a',
         cacheBust: true,
-        skipFonts: true, // 跳过字体加载检查，避免超时
+        skipFonts: true,
+        style: {
+          backgroundColor: '#0a0a0a',
+        }
       })
+      
+      // 恢复原背景
+      element.style.backgroundColor = originalBg
+      
+      // 下载图片
       const link = document.createElement('a')
-      link.download = `烧师富_${data?.hostName}_邀约.jpg`
+      link.download = `烧师富_${data?.hostName || '邀约'}_${new Date().getTime()}.jpg`
       link.href = dataUrl
+      document.body.appendChild(link)
       link.click()
+      document.body.removeChild(link)
+      
     } catch (error) {
       console.error('导出失败:', error)
-      alert('导出失败，请重试')
+      alert('导出失败，请使用浏览器截图功能或点击打印按钮')
     } finally {
       setExporting(false)
     }
