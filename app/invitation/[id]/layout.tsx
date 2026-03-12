@@ -6,8 +6,12 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://hqinvitation.vercel.app'
-    const response = await fetch(`${baseUrl}/api/banquet/${params.id}`, {
+    // 开发环境使用相对路径，生产环境使用绝对URL
+    const isDev = process.env.NODE_ENV === 'development'
+    const baseUrl = isDev ? 'http://localhost:3000' : (process.env.NEXT_PUBLIC_APP_URL || 'https://hqinvitation.vercel.app')
+    const apiUrl = isDev ? `http://localhost:3000/api/banquet/${params.id}` : `${baseUrl}/api/banquet/${params.id}`
+    
+    const response = await fetch(apiUrl, {
       cache: 'no-store'
     })
     
@@ -43,8 +47,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
   } catch (error) {
     return {
-      title: '私宴邀请函',
-      description: '平江颂私域宴请邀请函'
+      title: '烧鸟料理邀约函',
+      description: '烧师富·板前创作烧鸟邀约函'
     }
   }
 }
