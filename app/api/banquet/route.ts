@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, initDatabase } from '@/lib/prisma'
 
 export async function POST(request: Request) {
   try {
+    // 自动初始化数据库（首次运行时）
+    await initDatabase()
+    
     const data = await request.json()
     
     // 创建餐厅（如果不存在）
