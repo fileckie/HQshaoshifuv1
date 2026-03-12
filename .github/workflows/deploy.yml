@@ -1,0 +1,39 @@
+name: Deploy to Vercel
+
+# 触发条件：当 main 分支有 push 时
+on:
+  push:
+    branches: [main]
+
+# 任务
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. 检出代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # 2. 设置 Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      # 3. 安装 Vercel CLI
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+      
+      # 4. 拉取 Vercel 环境变量
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      
+      # 5. 构建项目
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      
+      # 6. 部署到 Vercel
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

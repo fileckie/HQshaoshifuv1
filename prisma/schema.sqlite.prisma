@@ -1,0 +1,58 @@
+// 开发环境 - SQLite
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id          String   @id @default(uuid())
+  name        String
+  address     String
+  phone       String
+  description String?
+  chefName    String?
+  chefIntro   String?
+  logo        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  banquets    Banquet[]
+}
+
+model Banquet {
+  id            String   @id @default(uuid())
+  title         String
+  date          String
+  time          String
+  guestCount    Int
+  roomName      String
+  hostName      String
+  hostPhone     String
+  menu          String
+  specialDishes String?
+  restaurantId  String
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id])
+  notes         String?
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  rsvps         RSVP[]
+}
+
+model RSVP {
+  id                  String   @id @default(uuid())
+  banquetId           String
+  banquet             Banquet  @relation(fields: [banquetId], references: [id], onDelete: Cascade)
+  guestName           String
+  guestPhone          String?
+  status              String   @default("pending")
+  attendeeCount       Int      @default(1)
+  dietaryRestrictions String?
+  message             String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
