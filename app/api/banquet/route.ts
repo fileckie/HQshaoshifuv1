@@ -1,108 +1,151 @@
-import { NextResponse } from 'next/server'
-import { prisma, initDatabase } from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
-export async function POST(request: Request) {
+// GET /api/banquet
+export async function GET(request: NextRequest) {
   try {
-    // 自动初始化数据库（首次运行时）
-    await initDatabase()
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
     
+    if (!id) {
+      return NextResponse.json({ error: '缺少ID' }, { status: 400 })
+    }
+    
+    const banquet = await prisma.banquet.findUnique({
+      where: { id },
+      include: {
+        restaurant: true,
+        customer: {
+          include: { preferences: true }
+        },
+        rsvps: true,
+        serviceTasks: true,
+      }
+    })
+    
+    if (!banquet) {
+      return NextResponse.json({ error: '宴请不存在' }, { status: 404 })
+    }
+    
+    return NextResponse.json(banquet)
+  } catch (error) {
+    console.error('Get banquet error:', error)
+    return NextResponse.json({ error: '获取失败' }, { status: 500 })
+  }
+}
+
+// POST /api/banquet - 创建宴请（支持客户识别）
+export async function POST(request: NextRequest) {
+  try {
     const data = await request.json()
     
-    // 创建餐厅（如果不存在）
-    let restaurant = await prisma.restaurant.findFirst({
-      where: { name: '烧师富' }
+    // 1. 查找或创建客户
+    let customer = await prisma.customer.findUnique({
+      where: { phone: data.hostPhone }
     })
     
-    if (!restaurant) {
-      restaurant = await prisma.restaurant.create({
+    if (customer) {
+      // 更新回头客数据
+      await prisma.customer.update({
+        where: { id: customer.id },
         data: {
-          name: '烧师富',
-          address: '双塔街道竹辉路168号环宇荟·L133',
-          phone: '17715549313',
-          description: '板前创作烧鸟',
+          totalVisits: { increment: 1 },
+          lastVisit: data.date,
+        }
+      })
+    } else {
+      // 创建新客户
+      customer = await prisma.customer.create({
+        data: {
+          name: data.hostName,
+          phone: data.hostPhone,
+          firstVisit: data.date,
+          lastVisit: data.date,
+          totalVisits: 1,
+          level: 'regular',
+          tags: '[]',
         }
       })
     }
     
-    // 根据roomName找到对应的tableId
-    let tableId = null
-    if (data.roomName) {
-      // 查找匹配的座位
-      const table = await prisma.table.findFirst({
-        where: {
-          restaurantId: restaurant.id,
-          type: data.roomName === '板前' ? 'counter' : 
-                data.roomName === '卡座' ? 'booth' :
-                data.roomName === '小包厢' ? 'private_small' :
-                data.roomName === '大包厢' ? 'private_large' : undefined
-        },
-        orderBy: { sortOrder: 'asc' }
-      })
-      
-      // 如果没有找到座位，创建一个
-      if (!table && data.roomName) {
-        const typeMap: Record<string, string> = {
-          '板前': 'counter',
-          '卡座': 'booth', 
-          '小包厢': 'private_small',
-          '大包厢': 'private_large'
-        }
-        const capacityMap: Record<string, number> = {
-          '板前': 1,
-          '卡座': 4,
-          '小包厢': 6,
-          '大包厢': 12
-        }
-        
-        const newTable = await prisma.table.create({
-          data: {
-            name: data.roomName,
-            type: typeMap[data.roomName] || 'counter',
-            restaurantId: restaurant.id,
-            x: 50,
-            y: 50,
-            width: 10,
-            height: 10,
-            capacity: capacityMap[data.roomName] || 4,
-            sortOrder: 0
-          }
-        })
-        tableId = newTable.id
-      } else if (table) {
-        tableId = table.id
-      }
-    }
-    
-    // 创建宴请活动
+    // 2. 创建宴请
     const banquet = await prisma.banquet.create({
       data: {
-        title: data.title || '邀请函',
+        title: data.title,
         date: data.date,
         time: data.time,
-        guestCount: parseInt(data.guestCount) || 2,
+        guestCount: parseInt(data.guestCount),
         roomName: data.roomName,
-        tableId: tableId,
         hostName: data.hostName,
-        hostPhone: data.hostPhone || '',
-        notes: data.note || data.notes,
+        hostPhone: data.hostPhone,
+        customerId: customer.id,
         menu: JSON.stringify(data.menu || []),
-        specialDishes: JSON.stringify((data.menu || []).filter((d: any) => d.isSignature)),
-        restaurantId: restaurant.id,
-        // 内部管理字段
-        bookingChannel: data.bookingChannel,
-        paymentStatus: data.paymentStatus,
-        dietaryRestrictions: data.dietaryRestrictions,
-        prepReminder: data.prepReminder,
-        handoverNotes: data.handoverNotes,
+        specialDishes: JSON.stringify(data.specialDishes || []),
+        notes: data.notes,
+        restaurantId: data.restaurantId || 'default',
+        bookingChannel: data.bookingChannel || 'phone',
+        serviceStatus: 'booked',
       }
     })
     
-    return NextResponse.json({ id: banquet.id })
+    // 3. 自动生成服务任务
+    const defaultTasks = [
+      { type: 'prep', title: '备餐提醒', scheduledAt: '-30', description: '提醒厨房开始备餐' },
+      { type: 'check', title: '包厢检查', scheduledAt: '-15', description: '检查包厢布置' },
+      { type: 'welcome', title: '迎客准备', scheduledAt: '0', description: '到门口迎接宾客' },
+      { type: 'serve', title: '上第一道菜', scheduledAt: '15', description: '上开胃菜/冷盘' },
+      { type: 'check', title: '巡台检查', scheduledAt: '30', description: '询问菜品满意度' },
+      { type: 'handover', title: '交接班', scheduledAt: '45', description: '交接注意事项' },
+    ]
+    
+    await prisma.serviceTask.createMany({
+      data: defaultTasks.map(task => ({
+        banquetId: banquet.id,
+        type: task.type,
+        title: task.title,
+        description: task.description,
+        scheduledAt: task.scheduledAt,
+        status: 'pending',
+      }))
+    })
+    
+    // 4. 检查是否需要创建生日提醒
+    if (customer.birthday) {
+      const today = new Date()
+      const birthDate = new Date(`${today.getFullYear()}-${customer.birthday}`)
+      const daysUntil = Math.ceil((birthDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+      
+      if (daysUntil > 0 && daysUntil <= 7) {
+        await prisma.reminder.create({
+          data: {
+            customerId: customer.id,
+            type: 'birthday',
+            title: `${customer.name} 生日快到了`,
+            content: `还有${daysUntil}天就是${customer.name}的生日（${customer.birthday}），建议准备生日祝福`,
+            remindDate: new Date(today.getTime() + (daysUntil - 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            banquetId: banquet.id,
+          }
+        })
+      }
+    }
+    
+    // 5. 生成链接
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+    
+    return NextResponse.json({
+      success: true,
+      banquet,
+      customer: {
+        id: customer.id,
+        isReturnCustomer: customer.totalVisits > 1,
+        totalVisits: customer.totalVisits,
+      },
+      invitationId: banquet.id,
+      invitationUrl: `${baseUrl}/invitation/${banquet.id}`,
+      printUrl: `${baseUrl}/print/${banquet.id}`,
+    })
   } catch (error) {
-    console.error('Error creating banquet:', error)
-    return NextResponse.json(
-      { error: 'Failed to create banquet' },
-      { status: 500 }
-    )
+    console.error('Create banquet error:', error)
+    return NextResponse.json({ success: false, error: '创建失败' }, { status: 500 })
   }
 }

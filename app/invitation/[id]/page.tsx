@@ -76,8 +76,9 @@ export default function InvitationPage() {
           backgroundColor: '#0a0a0a',
         },
         // 过滤掉可能影响渲染的元素
-        filter: (node: HTMLElement) => {
-          if (node.classList && node.classList.contains('no-print')) {
+        filter: (node: Node) => {
+          const element = node as HTMLElement;
+          if (element.classList && element.classList.contains('no-print')) {
             return false
           }
           return true
