@@ -638,6 +638,9 @@ export default function AdminPage() {
 
         {/* 底部链接 */}
         <div className="mt-12 text-center space-y-4">
+          <Link href="/admin/products" className="block text-white/50 hover:text-white text-sm" style={{ fontFamily: 'serif' }}>
+            管理今日推荐产品 →
+          </Link>
           <Link href="/admin/map" className="block text-white/50 hover:text-white text-sm" style={{ fontFamily: 'serif' }}>
             查看座位平面图 →
           </Link>

@@ -186,3 +186,19 @@ model Reminder {
   @@index([status])
   @@index([remindDate])
 }
+
+// 当季主推产品库
+model Product {
+  id          String   @id @default(uuid())
+  name        String   // 产品名称
+  description String?  // 产品介绍（小字）
+  category    String   // 类别：主厨限定串 / 当季时令烧鸟 / 其他
+  sortOrder   Int      @default(0) // 排序
+  isActive    Boolean  @default(true) // 是否启用
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([category])
+  @@index([isActive])
+  @@index([sortOrder])
+}

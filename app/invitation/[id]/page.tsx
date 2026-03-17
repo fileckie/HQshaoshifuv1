@@ -27,7 +27,7 @@ interface BanquetData {
 const BRAND_KEYWORDS = [
   { text: '板前创作', desc: 'Chef\'s Counter Creation' },
   { text: '风土食材', desc: 'Terroir Ingredients' },
-  { text: '小聚场', desc: 'Intimate Gathering' }
+  { text: '小聚酒场', desc: 'Intimate Gathering' }
 ]
 
 export default function InvitationPage() {
@@ -136,10 +136,11 @@ export default function InvitationPage() {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return { month: '--', day: '--' }
     try {
-      const date = new Date(dateStr)
+      // 解析 YYYY-MM-DD 格式，避免时区问题
+      const [year, month, day] = dateStr.split('-').map(Number)
       return {
-        month: date.getMonth() + 1,
-        day: date.getDate(),
+        month: month,
+        day: day,
       }
     } catch {
       return { month: '--', day: '--' }
@@ -275,23 +276,27 @@ export default function InvitationPage() {
 
           {/* 今日推荐 */}
           <div className="mb-8">
-            <h2 className="text-lg text-white mb-4 text-center tracking-[0.15em]" style={{ fontFamily: 'serif' }}>
-              今日炭火料理推荐
+            <h2 className="text-lg text-white mb-6 text-center tracking-[0.15em]" style={{ fontFamily: 'serif' }}>
+              今日推荐
             </h2>
-            <div className="space-y-3" style={{ fontFamily: 'serif' }}>
-              <div className="flex items-center gap-3">
-                <span className="text-white/70 text-sm w-24">主厨限定串</span>
-                <span className="text-white/40 text-sm flex-1 border-b border-white/10 pb-1">
-                  {(data.menu && data.menu[0]?.name) || ''}
-                </span>
-                <span className="text-white/20 text-sm w-12 text-right">____</span>
+            <div className="space-y-6" style={{ fontFamily: 'serif' }}>
+              {/* 主厨限定串 */}
+              <div className="text-center">
+                <div className="text-white text-base mb-1">
+                  {(data.menu && data.menu[0]?.name) || '主厨限定串'}
+                </div>
+                <div className="text-white/40 text-xs">
+                  主厨当日精选部位创作
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-white/70 text-sm w-24">当季时令烧鸟</span>
-                <span className="text-white/40 text-sm flex-1 border-b border-white/10 pb-1">
-                  {(data.menu && data.menu[1]?.name) || ''}
-                </span>
-                <span className="text-white/20 text-sm w-12 text-right">____</span>
+              {/* 当季时令烧鸟 */}
+              <div className="text-center">
+                <div className="text-white text-base mb-1">
+                  {(data.menu && data.menu[1]?.name) || '当季时令烧鸟'}
+                </div>
+                <div className="text-white/40 text-xs">
+                  根据当日食材新鲜度呈现
+                </div>
               </div>
             </div>
           </div>
@@ -320,12 +325,11 @@ export default function InvitationPage() {
               关于烧师富
             </h2>
             <div className="text-sm text-white/50 leading-relaxed text-center space-y-2" style={{ fontFamily: 'serif' }}>
-              <p>在很多城市里，烧鸟是一种很有烟火气的料理。</p>
-              <p>下班以后，坐在吧台前，点几串烧鸟，喝一点酒，聊一会天。</p>
-              <p>这种简单的快乐，一直存在。</p>
-              <p>但大多数烧鸟店的菜单，十几年几乎没有变化。</p>
-              <p>烧师富想做的事情，是让烧鸟重新变成一种可以创作的料理。</p>
-              <p>所以我们把自己定义为「板前创作」。</p>
+              <p>烧鸟一直都在。但它很少改变。</p>
+              <p>烧师富想做的，是让烧鸟重新变成一种可以创作的料理。</p>
+              <p>在这里，水果可以上炭火，组合可以被重做，每一串，都在板前完成。</p>
+              <p>有些已经很好吃，有些还在尝试。</p>
+              <p>但这件事本身，就是烧鸟的乐趣。</p>
             </div>
           </div>
 
