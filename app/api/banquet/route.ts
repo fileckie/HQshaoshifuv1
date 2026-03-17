@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { prisma, initDatabase } from '@/lib/prisma'
 
 // GET /api/banquet
 export async function GET(request: NextRequest) {
@@ -37,12 +37,18 @@ export async function GET(request: NextRequest) {
 // POST /api/banquet - 创建宴请（支持客户识别）
 export async function POST(request: NextRequest) {
   try {
+    // 先初始化数据库（如果还没有初始化）
+    await initDatabase()
+    
     const data = await request.json()
     
     // 1. 查找或创建客户
-    let customer = await prisma.customer.findUnique({
-      where: { phone: data.hostPhone }
-    })
+    let customer = null
+    if (data.hostPhone) {
+      customer = await prisma.customer.findUnique({
+        where: { phone: data.hostPhone }
+      })
+    }
     
     if (customer) {
       // 更新回头客数据
@@ -53,7 +59,7 @@ export async function POST(request: NextRequest) {
           lastVisit: data.date,
         }
       })
-    } else {
+    } else if (data.hostPhone) {
       // 创建新客户
       customer = await prisma.customer.create({
         data: {
@@ -71,14 +77,14 @@ export async function POST(request: NextRequest) {
     // 2. 创建宴请
     const banquet = await prisma.banquet.create({
       data: {
-        title: data.title,
+        title: data.title || '邀请函',
         date: data.date,
         time: data.time,
-        guestCount: parseInt(data.guestCount),
-        roomName: data.roomName,
+        guestCount: parseInt(data.guestCount) || 2,
+        roomName: data.roomName || '',
         hostName: data.hostName,
-        hostPhone: data.hostPhone,
-        customerId: customer.id,
+        hostPhone: data.hostPhone || '',
+        customerId: customer?.id,
         menu: JSON.stringify(data.menu || []),
         specialDishes: JSON.stringify(data.specialDishes || []),
         notes: data.notes,
@@ -110,7 +116,7 @@ export async function POST(request: NextRequest) {
     })
     
     // 4. 检查是否需要创建生日提醒
-    if (customer.birthday) {
+    if (customer?.birthday) {
       const today = new Date()
       const birthDate = new Date(`${today.getFullYear()}-${customer.birthday}`)
       const daysUntil = Math.ceil((birthDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
@@ -130,22 +136,27 @@ export async function POST(request: NextRequest) {
     }
     
     // 5. 生成链接
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://h-qshaoshifuv1.vercel.app'
     
     return NextResponse.json({
       success: true,
       banquet,
-      customer: {
+      customer: customer ? {
         id: customer.id,
         isReturnCustomer: customer.totalVisits > 1,
         totalVisits: customer.totalVisits,
-      },
+      } : null,
       invitationId: banquet.id,
       invitationUrl: `${baseUrl}/invitation/${banquet.id}`,
       printUrl: `${baseUrl}/print/${banquet.id}`,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create banquet error:', error)
-    return NextResponse.json({ success: false, error: '创建失败' }, { status: 500 })
+    // 返回更详细的错误信息以便调试
+    return NextResponse.json({ 
+      success: false, 
+      error: '创建失败',
+      details: error?.message || '未知错误'
+    }, { status: 500 })
   }
 }
