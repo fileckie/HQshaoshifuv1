@@ -1,6 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, initDatabase } from '@/lib/prisma'
 
+// 获取或创建默认餐厅
+async function getOrCreateRestaurant() {
+  // 先尝试找烧师富
+  let restaurant = await prisma.restaurant.findFirst({
+    where: { name: '烧师富' }
+  })
+  
+  if (!restaurant) {
+    // 创建默认餐厅
+    restaurant = await prisma.restaurant.create({
+      data: {
+        name: '烧师富',
+        address: '双塔街道竹辉路168号环宇荟·L133',
+        phone: '17715549313',
+        description: '板前创作烧鸟',
+      }
+    })
+    
+    // 初始化座位
+    const tables = [
+      // 板前 - 10个位置
+      ...Array.from({ length: 10 }, (_, i) => ({
+        name: `板前${i + 1}号`,
+        type: 'counter',
+        x: 8 + (i % 5) * 17,
+        y: 12 + Math.floor(i / 5) * 10,
+        width: 13,
+        height: 7,
+        capacity: 1,
+        restaurantId: restaurant.id,
+        sortOrder: i,
+      })),
+      // 卡座 - 4个
+      { name: '卡座A', type: 'booth', x: 8, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant.id, sortOrder: 10 },
+      { name: '卡座B', type: 'booth', x: 30, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant.id, sortOrder: 11 },
+      { name: '卡座C', type: 'booth', x: 52, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant.id, sortOrder: 12 },
+      { name: '卡座D', type: 'booth', x: 74, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant.id, sortOrder: 13 },
+      // 小包厢 - 1个
+      { name: '小包厢', type: 'private_small', x: 8, y: 62, width: 38, height: 28, capacity: 6, restaurantId: restaurant.id, sortOrder: 14 },
+      // 大包厢 - 1个
+      { name: '大包厢', type: 'private_large', x: 54, y: 62, width: 38, height: 28, capacity: 12, restaurantId: restaurant.id, sortOrder: 15 },
+    ]
+    
+    for (const table of tables) {
+      await prisma.table.create({ data: table })
+    }
+  }
+  
+  return restaurant
+}
+
 // GET /api/banquet
 export async function GET(request: NextRequest) {
   try {
@@ -37,12 +88,12 @@ export async function GET(request: NextRequest) {
 // POST /api/banquet - 创建宴请（支持客户识别）
 export async function POST(request: NextRequest) {
   try {
-    // 先初始化数据库（如果还没有初始化）
-    await initDatabase()
-    
     const data = await request.json()
     
-    // 1. 查找或创建客户
+    // 1. 获取或创建餐厅
+    const restaurant = await getOrCreateRestaurant()
+    
+    // 2. 查找或创建客户
     let customer = null
     if (data.hostPhone) {
       customer = await prisma.customer.findUnique({
@@ -74,7 +125,7 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    // 2. 创建宴请
+    // 3. 创建宴请
     const banquet = await prisma.banquet.create({
       data: {
         title: data.title || '邀请函',
@@ -88,13 +139,13 @@ export async function POST(request: NextRequest) {
         menu: JSON.stringify(data.menu || []),
         specialDishes: JSON.stringify(data.specialDishes || []),
         notes: data.notes,
-        restaurantId: data.restaurantId || 'default',
+        restaurantId: restaurant.id,
         bookingChannel: data.bookingChannel || 'phone',
         serviceStatus: 'booked',
       }
     })
     
-    // 3. 自动生成服务任务
+    // 4. 自动生成服务任务
     const defaultTasks = [
       { type: 'prep', title: '备餐提醒', scheduledAt: '-30', description: '提醒厨房开始备餐' },
       { type: 'check', title: '包厢检查', scheduledAt: '-15', description: '检查包厢布置' },
@@ -115,7 +166,7 @@ export async function POST(request: NextRequest) {
       }))
     })
     
-    // 4. 检查是否需要创建生日提醒
+    // 5. 检查是否需要创建生日提醒
     if (customer?.birthday) {
       const today = new Date()
       const birthDate = new Date(`${today.getFullYear()}-${customer.birthday}`)
@@ -135,7 +186,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // 5. 生成链接
+    // 6. 生成链接
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://h-qshaoshifuv1.vercel.app'
     
     return NextResponse.json({
@@ -152,7 +203,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('Create banquet error:', error)
-    // 返回更详细的错误信息以便调试
     return NextResponse.json({ 
       success: false, 
       error: '创建失败',
