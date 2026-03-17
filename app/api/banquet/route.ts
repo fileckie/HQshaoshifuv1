@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma, initDatabase } from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 
 // 获取或创建默认餐厅
 async function getOrCreateRestaurant() {
@@ -30,23 +30,27 @@ async function getOrCreateRestaurant() {
         width: 13,
         height: 7,
         capacity: 1,
-        restaurantId: restaurant.id,
+        restaurantId: restaurant!.id,
         sortOrder: i,
       })),
       // 卡座 - 4个
-      { name: '卡座A', type: 'booth', x: 8, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant.id, sortOrder: 10 },
-      { name: '卡座B', type: 'booth', x: 30, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant.id, sortOrder: 11 },
-      { name: '卡座C', type: 'booth', x: 52, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant.id, sortOrder: 12 },
-      { name: '卡座D', type: 'booth', x: 74, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant.id, sortOrder: 13 },
+      { name: '卡座A', type: 'booth', x: 8, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant!.id, sortOrder: 10 },
+      { name: '卡座B', type: 'booth', x: 30, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant!.id, sortOrder: 11 },
+      { name: '卡座C', type: 'booth', x: 52, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant!.id, sortOrder: 12 },
+      { name: '卡座D', type: 'booth', x: 74, y: 42, width: 18, height: 14, capacity: 4, restaurantId: restaurant!.id, sortOrder: 13 },
       // 小包厢 - 1个
-      { name: '小包厢', type: 'private_small', x: 8, y: 62, width: 38, height: 28, capacity: 6, restaurantId: restaurant.id, sortOrder: 14 },
+      { name: '小包厢', type: 'private_small', x: 8, y: 62, width: 38, height: 28, capacity: 6, restaurantId: restaurant!.id, sortOrder: 14 },
       // 大包厢 - 1个
-      { name: '大包厢', type: 'private_large', x: 54, y: 62, width: 38, height: 28, capacity: 12, restaurantId: restaurant.id, sortOrder: 15 },
+      { name: '大包厢', type: 'private_large', x: 54, y: 62, width: 38, height: 28, capacity: 12, restaurantId: restaurant!.id, sortOrder: 15 },
     ]
     
     for (const table of tables) {
       await prisma.table.create({ data: table })
     }
+  }
+  
+  if (!restaurant) {
+    throw new Error('无法创建或找到餐厅')
   }
   
   return restaurant
