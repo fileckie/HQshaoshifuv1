@@ -35,14 +35,58 @@ export default function InvitationPage() {
   const router = useRouter()
   const [data, setData] = useState<BanquetData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
 
+  // 获取数据，带重试机制
+  const fetchData = async (retryCount = 0) => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const res = await fetch(`/api/banquet/${params.id}`, {
+        cache: 'no-store'
+      })
+      
+      if (!res.ok) {
+        if (res.status === 404) {
+          setError('邀请函不存在或已过期')
+          setLoading(false)
+          return
+        }
+        throw new Error(`HTTP ${res.status}`)
+      }
+      
+      const json = await res.json()
+      
+      // 验证返回的数据是否有效
+      if (json && json.id) {
+        setData(json)
+        setError(null)
+      } else {
+        setError('邀请函数据无效')
+      }
+    } catch (err) {
+      console.error('Error fetching banquet:', err)
+      
+      // 重试机制，最多重试2次
+      if (retryCount < 2) {
+        console.log(`Retrying... attempt ${retryCount + 1}`)
+        setTimeout(() => fetchData(retryCount + 1), 1000)
+        return
+      }
+      
+      setError('加载失败，请刷新页面重试')
+    } finally {
+      if (retryCount >= 2 || error) {
+        setLoading(false)
+      }
+    }
+  }
+
   useEffect(() => {
-    fetch(`/api/banquet/${params.id}`)
-      .then(res => res.json())
-      .then(setData)
-      .finally(() => setLoading(false))
+    fetchData()
   }, [params.id])
 
   // 导出图片 - 使用可靠的方式
@@ -147,8 +191,36 @@ export default function InvitationPage() {
     }
   }
 
-  if (loading) return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">加载中...</div>
-  if (!data) return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-white">未找到邀请信息</div>
+  // 加载状态
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center text-white">
+        <div className="animate-pulse text-lg" style={{ fontFamily: 'serif' }}>加载中...</div>
+        <div className="mt-4 text-sm text-white/40" style={{ fontFamily: 'serif' }}>请稍候</div>
+      </div>
+    )
+  }
+  
+  // 错误状态
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center text-white px-4">
+        <div className="text-lg mb-4" style={{ fontFamily: 'serif' }}>
+          {error || '无法加载邀请函'}
+        </div>
+        <button 
+          onClick={() => fetchData()}
+          className="px-6 py-2 border border-white/40 text-white hover:bg-white/10"
+          style={{ fontFamily: 'serif' }}
+        >
+          重新加载
+        </button>
+        <Link href="/" className="mt-4 text-sm text-white/40 hover:text-white" style={{ fontFamily: 'serif' }}>
+          ← 返回首页
+        </Link>
+      </div>
+    )
+  }
 
   const dateInfo = formatDate(data.date)
 
